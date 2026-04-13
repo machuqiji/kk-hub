@@ -15,6 +15,18 @@
     <name>mila-framework-starter-mybatis</name>
 
     <dependencies>
-        <!-- mybatis starter dependencies -->
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kk.mila</groupId>
+            <artifactId>mila-framework-starter-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
     </dependencies>
 </project>

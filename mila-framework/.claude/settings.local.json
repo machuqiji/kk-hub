@@ -9,7 +9,10 @@
       "Read(//c/Program Files/**)",
       "Bash(ls -d \"/c/apache-maven\"*/bin/mvn*)",
       "Read(//d//**)",
-      "Bash(mvn --version)"
+      "Bash(mvn --version)",
+      "WebSearch",
+      "Bash(where choco:*)",
+      "Bash(where scoop:*)"
     ]
   }
 }
