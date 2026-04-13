@@ -8,7 +8,8 @@
       "Bash(where mvn:*)",
       "Read(//c/Program Files/**)",
       "Bash(ls -d \"/c/apache-maven\"*/bin/mvn*)",
-      "Read(//d//**)"
+      "Read(//d//**)",
+      "Bash(mvn --version)"
     ]
   }
 }

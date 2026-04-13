@@ -15,6 +15,18 @@
     <name>mila-framework-starter-redis</name>
 
     <dependencies>
-        <!-- redis starter dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.kk.mila</groupId>
+            <artifactId>mila-framework-starter-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>
