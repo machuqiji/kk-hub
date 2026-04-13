@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.kk.mila</groupId>
+    <artifactId>mila-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>mila-framework</name>
+    <description>Spring Boot 4.0 开发脚手架</description>
+
+    <modules>
+        <module>mila-framework-dependencies</module>
+        <module>mila-framework-starter-common</module>
+        <module>mila-framework-starter-redis</module>
+        <module>mila-framework-starter-mybatis</module>
+        <module>mila-framework-starter-satoken</module>
+        <module>mila-framework-starter-web</module>
+    </modules>
+</project>
