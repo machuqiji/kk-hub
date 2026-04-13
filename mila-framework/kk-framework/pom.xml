@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.kk.framework</groupId>
+    <artifactId>kk-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>kk-framework-parent</module>
+        <module>kk-framework-dependencies</module>
+        <module>kk-framework-starter-common</module>
+        <module>kk-framework-starter-logging</module>
+        <module>kk-framework-starter-web</module>
+        <module>kk-framework-starter-data</module>
+        <module>kk-framework-starter-security</module>
+    </modules>
+
+</project>
