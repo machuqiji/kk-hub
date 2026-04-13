@@ -15,6 +15,14 @@
     <name>mila-framework-starter-web</name>
 
     <dependencies>
-        <!-- web starter dependencies -->
+        <dependency>
+            <groupId>com.kk.mila</groupId>
+            <artifactId>mila-framework-starter-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+        </dependency>
     </dependencies>
 </project>
