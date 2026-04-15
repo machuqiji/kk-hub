@@ -17,7 +17,10 @@
       "Bash(mvn clean *)",
       "Bash(ls -la *.cmd mvnw*)",
       "Bash(where mvn *)",
-      "Read(//c/Users/kk/Ideaprojects/kk-hub/**)"
+      "Read(//c/Users/kk/Ideaprojects/kk-hub/**)",
+      "Bash(export JAVA_HOME=\"/c/Users/kk/Tools/jdk-21.0.2\")",
+      "Bash(export PATH=\"$PATH:/c/Users/kk/Tools/jdk-21.0.2/bin:/c/Users/kk/Tools/apache-maven-3.9.9/bin\")",
+      "Bash(java --version)"
     ]
   }
 }
