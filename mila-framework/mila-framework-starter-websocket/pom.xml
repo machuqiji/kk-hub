@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.kk.mila</groupId>
+        <artifactId>mila-framework-dependencies</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../mila-framework-dependencies/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mila-framework-starter-websocket</artifactId>
+    <name>mila-framework-starter-websocket</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.kk.mila</groupId>
+            <artifactId>mila-framework-starter-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring WebSocket -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Sa-Token for authentication -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Optional: RabbitMQ for STOMP broker relay -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

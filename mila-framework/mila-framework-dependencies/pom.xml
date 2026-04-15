@@ -21,6 +21,8 @@
         <hutools.version>5.8.26</hutools.version>
         <satoken.version>1.37.0</satoken.version>
         <logback-json.version>4.0.0</logback-json.version>
+        <paho.version>2.0.0</paho.version>
+        <spring-integration-mqtt.version>6.3.0</spring-integration-mqtt.version>
     </properties>
 
     <dependencyManagement>
@@ -60,6 +62,20 @@
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>${logback-json.version}</version>
+            </dependency>
+
+            <!-- Eclipse Paho MQTT -->
+            <dependency>
+                <groupId>org.eclipse.paho</groupId>
+                <artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+                <version>${paho.version}</version>
+            </dependency>
+
+            <!-- Spring Integration MQTT -->
+            <dependency>
+                <groupId>org.springframework.integration</groupId>
+                <artifactId>spring-integration-mqtt</artifactId>
+                <version>${spring-integration-mqtt.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

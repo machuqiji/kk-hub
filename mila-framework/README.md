@@ -14,6 +14,8 @@ Spring Boot 4.0 开发脚手架，面向开源场景。
 | 工具类 | Hutools | 5.x |
 | 安全框架 | Sa-Token | 完整功能 |
 | 日志 | Logback + JSON格式 | 结构化日志 |
+| WebSocket | Spring WebSocket + STOMP | 基础 + STOMP双模式 |
+| MQTT | Eclipse Paho + Spring Integration | MQTT 5.0 QoS 0/1/2 |
 
 ## 模块结构
 
@@ -25,7 +27,9 @@ mila-framework/
 ├── mila-framework-starter-web/     # Web starter（REST规范）
 ├── mila-framework-starter-redis/   # Redis starter
 ├── mila-framework-starter-mybatis/ # MyBatisFlex starter
-└── mila-framework-starter-satoken/ # Sa-Token starter
+├── mila-framework-starter-satoken/ # Sa-Token starter
+├── mila-framework-starter-websocket/ # WebSocket starter
+└── mila-framework-starter-mqtt/    # MQTT starter
 ```
 
 ## 快速开始
@@ -61,6 +65,20 @@ mila-framework/
     <dependency>
         <groupId>com.kk.mila</groupId>
         <artifactId>mila-framework-starter-satoken</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+
+    <!-- WebSocket starter（WebSocket + STOMP通信）-->
+    <dependency>
+        <groupId>com.kk.mila</groupId>
+        <artifactId>mila-framework-starter-websocket</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+
+    <!-- MQTT starter（IoT设备数据采集）-->
+    <dependency>
+        <groupId>com.kk.mila</groupId>
+        <artifactId>mila-framework-starter-mqtt</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
@@ -103,6 +121,26 @@ spring:
 #     token-name: Authorization
 #     timeout: 7200
 #     secret-key: your-secret-key
+
+# WebSocket配置
+# mila:
+#   websocket:
+#     basic-enabled: true
+#     stomp-enabled: true
+#     stomp-endpoint: /ws-stomp
+#     broker:
+#       relay-enabled: true
+#       relay-host: localhost
+#       relay-port: 61613
+
+# MQTT配置（IoT）
+# mila:
+#   mqtt:
+#     broker-url: tcp://localhost:1883
+#     client-id: mila-iot-gateway
+#     subscribed-topics:
+#       - devices/+/telemetry
+#       - devices/+/status
 ```
 
 ### 3. 开发接口
@@ -400,6 +438,138 @@ public ApiResponse<Void> updatePassword() { ... }
 | `mila.satoken.is-concurrent` | 是否允许并发登录 | `true` |
 | `mila.satoken.is-share` | 是否共享登录 | `true` |
 | `mila.satoken.token-style` | Token生成风格 | `uuid` |
+
+---
+
+### mila-framework-starter-websocket
+
+WebSocket 通信模块，支持基础 WebSocket 和 STOMP 协议。
+
+#### 基础 WebSocket
+
+```java
+@ServerEndpoint(value = "/ws/basic")
+public class BasicWebSocketEndpoint {
+
+    @OnOpen
+    public void onOpen(Session session) { ... }
+
+    @OnMessage
+    public void onMessage(String message, Session session) {
+        // 广播消息
+        broadcast(message);
+    }
+
+    @OnClose
+    public void onClose(Session session) { ... }
+}
+
+// 发送消息给所有连接
+BasicWebSocketEndpoint.broadcast("Hello");
+
+// 发送消息给指定会话
+BasicWebSocketEndpoint.sendToSession(sessionId, "Private message");
+```
+
+#### STOMP over WebSocket
+
+```java
+@Controller
+public class StompMessageHandler {
+
+    @MessageMapping("/chat/send")
+    @SendTo("/topic/public")
+    public String sendMessage(String message, SimpMessageHeaderAccessor headerAccessor) {
+        return message;
+    }
+}
+```
+
+#### Sa-Token STOMP 认证
+
+STOMP 连接时从 header 中提取 Token 进行认证：
+
+```
+CONNECT
+token: your-sa-token-here
+
+CONNECTED
+```
+
+#### 配置说明
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `mila.websocket.basic-enabled` | 启用基础WebSocket | `true` |
+| `mila.websocket.basic-path` | 基础WebSocket路径 | `/ws` |
+| `mila.websocket.stomp-enabled` | 启用STOMP | `true` |
+| `mila.websocket.stomp-endpoint` | STOMP端点 | `/ws-stomp` |
+| `mila.websocket.broker.type` | Broker类型 | `rabbitmq` |
+| `mila.websocket.broker.relay-enabled` | 启用外部Broker Relay | `false` |
+| `mila.websocket.broker.relay-host` | Broker主机 | `localhost` |
+| `mila.websocket.broker.relay-port` | Broker端口 | `61613` |
+
+---
+
+### mila-framework-starter-mqtt
+
+MQTT IoT 设备数据采集模块，基于 Eclipse Paho + Spring Integration MQTT。
+
+#### 消息处理
+
+```java
+@Service
+public class IotDataCollector {
+
+    // 收集设备遥测数据
+    public void collectTelemetry(String deviceId, String topic, Object payload) {
+        // 处理设备上报的传感器数据
+    }
+
+    // 收集设备状态
+    public void collectStatus(String deviceId, String topic, Object payload) {
+        // 处理设备状态更新
+    }
+
+    // 处理下发命令
+    public void processCommand(String deviceId, String topic, Object payload) {
+        // 处理云端下发的控制指令
+    }
+}
+```
+
+#### Topic 路由规则
+
+| Topic 模式 | 消息类型 |
+|-----------|---------|
+| `devices/{deviceId}/telemetry` | 设备遥测数据 |
+| `devices/{deviceId}/status` | 设备状态 |
+| `devices/{deviceId}/command` | 控制指令 |
+
+#### 配置说明
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `mila.mqtt.broker-url` | MQTT Broker地址 | `tcp://localhost:1883` |
+| `mila.mqtt.client-id` | 客户端ID | 自动生成 |
+| `mila.mqtt.default-qos` | 默认QoS级别 | `1` |
+| `mila.mqtt.subscribed-topics` | 订阅主题数组 | `devices/+/telemetry, devices/+/status` |
+| `mila.mqtt.device-id-pattern` | 设备ID提取正则 | `devices/([^/]+)/` |
+| `mila.mqtt.ssl-enabled` | 启用SSL | `false` |
+
+#### 使用示例
+
+```yaml
+mila:
+  mqtt:
+    broker-url: tcp://broker.hivemq.com:1883
+    client-id: mila-iot-gateway
+    default-qos: 1
+    subscribed-topics:
+      - devices/+/telemetry
+      - devices/+/status
+      - devices/+/command
+```
 
 ---
 
