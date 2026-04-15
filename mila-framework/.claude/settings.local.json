@@ -12,7 +12,12 @@
       "Bash(java -version)",
       "Bash(export PATH=\"$PATH:/c/Users/kk/Tools/apache-maven-3.9.9/bin\")",
       "Bash(export MAVEN_HOME=\"/c/Users/kk/Tools/apache-maven-3.9.9\")",
-      "Bash(mvn --version)"
+      "Bash(mvn --version)",
+      "Bash(curl *)",
+      "Bash(mvn clean *)",
+      "Bash(ls -la *.cmd mvnw*)",
+      "Bash(where mvn *)",
+      "Read(//c/Users/kk/Ideaprojects/kk-hub/**)"
     ]
   }
 }
