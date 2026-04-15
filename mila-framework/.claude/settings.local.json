@@ -1,18 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)",
-      "Bash(git commit -m ':*)",
-      "Bash(git commit:*)",
-      "Bash(mvn clean:*)",
-      "Bash(where mvn:*)",
-      "Read(//c/Program Files/**)",
-      "Bash(ls -d \"/c/apache-maven\"*/bin/mvn*)",
-      "Read(//d//**)",
-      "Bash(mvn --version)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(powershell *)",
+      "Bash(git push *)",
       "WebSearch",
-      "Bash(where choco:*)",
-      "Bash(where scoop:*)"
+      "WebFetch(domain:www.eclipse.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:repo1.maven.org)",
+      "Bash(java -version)",
+      "Bash(export PATH=\"$PATH:/c/Users/kk/Tools/apache-maven-3.9.9/bin\")",
+      "Bash(export MAVEN_HOME=\"/c/Users/kk/Tools/apache-maven-3.9.9\")",
+      "Bash(mvn --version)"
     ]
   }
 }
