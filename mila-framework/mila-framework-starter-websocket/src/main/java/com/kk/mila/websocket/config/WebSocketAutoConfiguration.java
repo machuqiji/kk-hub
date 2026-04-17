@@ -1,7 +1,7 @@
 package com.kk.mila.websocket.config;
 
 import com.kk.mila.websocket.endpoint.BasicWebSocketEndpoint;
-import jakarta.websocket.server.ServerEndpointExporter;
+import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

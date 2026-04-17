@@ -5,11 +5,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PageUtil {
+
     public static <T, R> PageResult<R> convert(PageResult<T> page, Function<T, R> converter) {
-        List<R> records = page.getRecords().stream()
+        List<R> records = page.records.stream()
                 .map(converter)
                 .collect(Collectors.toList());
-        return new PageResult<>(records, page.getTotal());
+        return new PageResult<>(records, page.total());
     }
 
     public record PageResult<T>(List<T> records, long total) {}

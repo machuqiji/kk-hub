@@ -28,5 +28,9 @@
         <module>../mila-framework-starter-mybatis</module>
         <module>../mila-framework-starter-satoken</module>
         <module>../mila-framework-starter-web</module>
+        <module>../mila-framework-starter-websocket</module>
+        <module>../mila-framework-starter-mqtt</module>
+        <module>../mila-framework-starter-rbac</module>
+        <module>../mila-service-rbac</module>
     </modules>
 </project>

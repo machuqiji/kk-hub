@@ -1,21 +1,17 @@
 package com.kk.mila.web.log;
 
-import net.logstash.logback.classic.LogstashLayout;
+import net.logstash.logback.encoder.LogstashEncoder;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonLogLayout extends LogstashLayout {
+public class JsonLogLayout extends LogstashEncoder {
 
     public JsonLogLayout() {
         setCustomFields("{\"app\":\"mila-framework\"}");
-        setIncludeMdcKeyNameList(getMdcFields());
+        setIncludeMdcKeyNames(getMdcFields());
         setIncludeContext(true);
         setIncludeTags(true);
-        setIncludeLoggerName(true);
-        setIncludeThreadName(true);
-        setIncludeMessage(true);
-        setIncludeException(true);
         setIncludeCallerData(true);
         setTimestampPattern("yyyy-MM-dd HH:mm:ss.SSS");
     }

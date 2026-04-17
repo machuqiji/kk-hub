@@ -8,6 +8,7 @@
         <groupId>com.kk.mila</groupId>
         <artifactId>mila-framework-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../mila-framework-parent/pom.xml</relativePath>
     </parent>
     <artifactId>mila-framework-dependencies</artifactId>
     <packaging>pom</packaging>
@@ -20,9 +21,10 @@
         <mybatis-flex.version>1.9.0</mybatis-flex.version>
         <hutools.version>5.8.26</hutools.version>
         <satoken.version>1.37.0</satoken.version>
-        <logback-json.version>4.0.0</logback-json.version>
-        <paho.version>2.0.0</paho.version>
+        <logback-json.version>8.0</logback-json.version>
+        <paho.version>1.2.5</paho.version>
         <spring-integration-mqtt.version>6.3.0</spring-integration-mqtt.version>
+        <caffeine.version>3.1.8</caffeine.version>
     </properties>
 
     <dependencyManagement>
@@ -53,7 +55,7 @@
             <!-- Sa-Token -->
             <dependency>
                 <groupId>cn.dev33</groupId>
-                <artifactId>sa-token-spring-boot-starter</artifactId>
+                <artifactId>sa-token-spring-boot3-starter</artifactId>
                 <version>${satoken.version}</version>
             </dependency>
 
@@ -76,6 +78,13 @@
                 <groupId>org.springframework.integration</groupId>
                 <artifactId>spring-integration-mqtt</artifactId>
                 <version>${spring-integration-mqtt.version}</version>
+            </dependency>
+
+            <!-- Caffeine -->
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

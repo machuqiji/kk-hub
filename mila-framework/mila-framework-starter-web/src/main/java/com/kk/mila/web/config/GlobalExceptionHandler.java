@@ -2,7 +2,6 @@ package com.kk.mila.web.config;
 
 import com.kk.mila.common.ApiResponse;
 import com.kk.mila.common.core.exception.BizException;
-import com.kk.mila.common.core.exception.IBizCode;
 import com.kk.mila.common.core.exception.ResultCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,12 +21,6 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleBizException(BizException e) {
         log.warn("业务异常: code={}, message={}", e.getCode(), e.getMessage());
         return ApiResponse.error(e.getCode(), e.getMessage());
-    }
-
-    @ExceptionHandler(IBizCode.class)
-    public ApiResponse<Void> handleBizCode(IBizCode bizCode) {
-        log.warn("业务码异常: code={}, message={}", bizCode.getCode(), bizCode.getMessage());
-        return ApiResponse.error(bizCode.getCode(), bizCode.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

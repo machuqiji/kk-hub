@@ -1,5 +1,7 @@
 package com.kk.mila.common;
 
+import com.kk.mila.common.core.exception.IBizCode;
+
 public class ApiResponse<T> {
     private int code;
     private String message;

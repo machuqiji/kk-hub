@@ -17,7 +17,14 @@
     <dependencies>
         <dependency>
             <groupId>com.mybatis-flex</groupId>
-            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
+            <artifactId>mybatis-flex-spring-boot4-starter</artifactId>
+            <version>1.11.6</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-processor</artifactId>
+            <version>1.11.6</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.kk.mila</groupId>

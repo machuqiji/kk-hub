@@ -2,6 +2,7 @@ package com.kk.mila.mqtt.config;
 
 import com.kk.mila.mqtt.handler.MqttMessageHandler;
 import com.kk.mila.mqtt.service.IotDataCollector;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -10,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
-import org.springframework.integration.mqtt.support.DefaultMqttPahoMessageConverter;
-import org.springframework.integration.mqtt.support.MqttPahoMessageConverter;
+import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
+import org.springframework.integration.mqtt.support.MqttMessageConverter;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.messaging.MessageChannel;
 
@@ -26,32 +27,28 @@ public class MqttAutoConfiguration {
     @Bean
     public MqttPahoClientFactory mqttPahoClientFactory(MqttProperties properties) {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
-        factory.setServerURIs(properties.getBrokerUrl());
+
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setServerURIs(new String[]{properties.getBrokerUrl()});
 
         if (properties.getUsername() != null && !properties.getUsername().isEmpty()) {
-            factory.setUserName(properties.getUsername());
+            options.setUserName(properties.getUsername());
         }
         if (properties.getPassword() != null && !properties.getPassword().isEmpty()) {
-            factory.setPassword(properties.getPassword());
+            options.setPassword(properties.getPassword().toCharArray());
         }
 
-        factory.setAutomaticReconnect(properties.isAutomaticReconnect());
-        factory.setConnectionTimeout(properties.getConnectionTimeout());
+        options.setAutomaticReconnect(properties.isAutomaticReconnect());
+        options.setConnectionTimeout(properties.getConnectionTimeout());
 
-        String clientId = properties.getClientId();
-        if (clientId == null || clientId.isEmpty()) {
-            clientId = "mila-" + UUID.randomUUID().toString();
-        }
-        factory.setClientId(clientId);
+        factory.setConnectionOptions(options);
 
         return factory;
     }
 
     @Bean
-    public MqttPahoMessageConverter mqttPahoMessageConverter(MqttProperties properties) {
-        DefaultMqttPahoMessageConverter converter = new DefaultMqttPahoMessageConverter();
-        converter.setDefaultQos(properties.getDefaultQos());
-        return converter;
+    public MqttMessageConverter mqttPahoMessageConverter(MqttProperties properties) {
+        return new DefaultPahoMessageConverter(properties.getDefaultQos(), false);
     }
 
     @Bean
@@ -63,11 +60,11 @@ public class MqttAutoConfiguration {
     public MqttPahoMessageDrivenChannelAdapter mqttInboundChannelAdapter(
             MqttProperties properties,
             MqttPahoClientFactory clientFactory,
-            MqttPahoMessageConverter messageConverter,
+            MqttMessageConverter messageConverter,
             MessageChannel mqttInputChannel) {
 
         MqttPahoMessageDrivenChannelAdapter adapter =
-                new MqttPahoMessageDrivenChannelAdapter("mila-mqtt-adapter", clientFactory, properties.getSubscribedTopics());
+                new MqttPahoMessageDrivenChannelAdapter(resolveClientId(properties), clientFactory, properties.getSubscribedTopics());
         adapter.setConverter(messageConverter);
         adapter.setOutputChannel(mqttInputChannel);
         adapter.setQos(properties.getDefaultQos());
@@ -84,5 +81,13 @@ public class MqttAutoConfiguration {
             MqttProperties properties,
             IotDataCollector iotDataCollector) {
         return new MqttMessageHandler(properties, iotDataCollector);
+    }
+
+    private static String resolveClientId(MqttProperties properties) {
+        String clientId = properties.getClientId();
+        if (clientId == null || clientId.isEmpty()) {
+            clientId = "mila-" + UUID.randomUUID();
+        }
+        return clientId;
     }
 }
