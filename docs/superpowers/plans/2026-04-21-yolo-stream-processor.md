@@ -21,6 +21,22 @@
 > - Add integration test skeleton for full chain testing
 > - Add graceful shutdown signal handlers
 > - Add prometheus metrics and structured logging
+> - Pipeline: rename _infer_loop method to _run_inference to avoid attr/method collision
+> - Pipeline: fix run_in_executor misuse — use loop.run_until_complete directly
+> - Pipeline: remove duplicate get_result()/get_fps() definitions
+> - Pipeline: replace asyncio.Queue with queue.Queue for cross-thread _result_queue
+> - Pipeline: replace bare except: with specific (Full, Empty) exception types
+> - ModelPool: remove inner async with self._lock that caused unconditional deadlock
+> - StreamManager: use run_coroutine_threadsafe instead of create_task from non-async thread
+> - StreamManager: fix pipeline._thread → pipeline._decode_thread
+> - config.py: add missing import logging
+> - config.py: consolidate AppConfig/FullConfig into single AppConfig with log field
+> - database.py: export async_session_maker module-level variable
+> - stream_repo.py: use func.count() instead of loading all rows
+> - routes/models.py: add missing Form and Path imports
+> - dispatcher.py: reuse aiohttp.ClientSession across retries
+> - snapshot.py: cache S3 client as instance attribute
+> - key_repo.py: add key_prefix column for O(1) lookup instead of O(n) scan
 
 ---
 
@@ -123,6 +139,7 @@ api:
 - [ ] **Step 4: 创建 app/config.py**
 
 ```python
+import logging
 import os
 from pathlib import Path
 from typing import Literal
@@ -167,6 +184,10 @@ class APIConfig(BaseModel):
     rate_limit: str = "100/minute"
 
 
+class LogConfig(BaseModel):
+    level: str = "INFO"
+
+
 class AppConfig(BaseModel):
     database: DatabaseConfig = DatabaseConfig()
     models: ModelsConfig = ModelsConfig()
@@ -174,6 +195,7 @@ class AppConfig(BaseModel):
     webhook: WebhookConfig = WebhookConfig()
     pipeline: PipelineConfig = PipelineConfig()
     api: APIConfig = APIConfig()
+    log: LogConfig = LogConfig()
 
 
 def load_config(config_path: str = "config.yaml") -> AppConfig:
@@ -188,7 +210,6 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
 config = load_config()
 
 
-# Structured logging — configure once at startup
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
@@ -201,23 +222,6 @@ structlog.configure(
     logger_factory=structlog.PrintLoggerFactory(),
     cache_logger_on_first_use=True,
 )
-
-
-class LogConfig(BaseModel):
-    level: str = "INFO"
-
-
-class FullConfig(BaseModel):
-    database: DatabaseConfig = DatabaseConfig()
-    models: ModelsConfig = ModelsConfig()
-    snapshots: SnapshotsConfig = SnapshotsConfig()
-    webhook: WebhookConfig = WebhookConfig()
-    pipeline: PipelineConfig = PipelineConfig()
-    api: APIConfig = APIConfig()
-    log: LogConfig = LogConfig()
-
-
-full_config = FullConfig()
 ```
 
 - [ ] **Step 5: 创建 app/main.py 骨架**
@@ -285,6 +289,8 @@ engine = create_async_engine(
     echo=False,
 )
 
+async_session_maker = async_sessionmaker(engine, class_=AsyncSession)
+
 
 async def init_db():
     Path(config.database.path).parent.mkdir(parents=True, exist_ok=True)
@@ -296,13 +302,13 @@ async def init_db():
 
 
 async def get_session() -> AsyncSession:
-    async with async_sessionmaker(engine, class_=AsyncSession)() as session:
+    async with async_session_maker() as session:
         yield session
 
 
 @asynccontextmanager
 async def get_db_session():
-    async with async_sessionmaker(engine, class_=AsyncSession)() as session:
+    async with async_session_maker() as session:
         try:
             yield session
             await session.commit()
@@ -371,6 +377,7 @@ class APIKey(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    key_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -392,13 +399,16 @@ class APIKeyRepository:
 
     async def create(self, name: str, raw_key: str) -> tuple[APIKey, str]:
         key_hash = bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
-        key = APIKey(name=name, key_hash=key_hash)
+        key = APIKey(name=name, key_hash=key_hash, key_prefix=raw_key[:8])
         self.session.add(key)
         await self.session.flush()
-        return key, raw_key  # 返回明文（仅创建时可见）
+        return key, raw_key
 
     async def verify(self, raw_key: str) -> APIKey | None:
-        stmt = select(APIKey).where(APIKey.is_active == True)
+        stmt = select(APIKey).where(
+            APIKey.is_active == True,
+            APIKey.key_prefix == raw_key[:8],
+        )
         result = await self.session.execute(stmt)
         for key in result.scalars():
             if bcrypt.checkpw(raw_key.encode(), key.key_hash.encode()):
@@ -424,7 +434,7 @@ class APIKeyRepository:
 - [ ] **Step 4: 创建 app/db/repositories/stream_repo.py**
 
 ```python
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Stream
@@ -455,9 +465,8 @@ class StreamRepository:
         result = await self.session.execute(stmt)
         streams = list(result.scalars())
 
-        count_stmt = select(Stream)
-        count_result = await self.session.execute(count_stmt)
-        total = len(list(count_result.scalars()))
+        count_stmt = select(func.count()).select_from(Stream)
+        total = (await self.session.execute(count_stmt)).scalar_one()
 
         return streams, total
 
@@ -868,8 +877,6 @@ class ModelPool:
             if not immediate:
                 switch_event = asyncio.Event()
                 self._switch_events[model_id] = switch_event
-                async with self._lock:
-                    pass
 
             instance.status = "unloading"
 
@@ -987,7 +994,7 @@ import atexit
 import logging
 import time
 from dataclasses import dataclass, field
-from queue import Queue, Empty
+from queue import Queue, Empty, Full
 from threading import Thread, Event
 from typing import Literal, Callable
 
@@ -1052,11 +1059,11 @@ class Pipeline:
         self._decoder: VideoDecoder | None = None
         self._frame_queue: Queue[DecodedFrame | None] = Queue(maxsize=config.queue_maxsize)
         # None sentinel signals the inference thread to shut down
-        self._result_queue: asyncio.Queue[InferenceResult] = asyncio.Queue(maxsize=100)
+        self._result_queue: Queue[InferenceResult] = Queue(maxsize=100)
         self._running = False
         self._decode_thread: Thread | None = None
         self._infer_thread: Thread | None = None
-        self._infer_loop: asyncio.AbstractEventLoop | None = None
+        self._infer_event_loop: asyncio.AbstractEventLoop | None = None
         self._annotator = Annotator()
         self._rtmp_output = None  # set by inference thread after first frame
 
@@ -1078,11 +1085,7 @@ class Pipeline:
         if self._decode_thread:
             self._decode_thread.join(timeout=5)
         # Stop inference thread via sentinel
-        if self._infer_loop and self._infer_loop.is_running():
-            asyncio.run_coroutine_threadsafe(
-                self._result_queue.put(InferenceResult.__new__(InferenceResult)),
-                self._infer_loop,
-            )
+        self._frame_queue.put(None)
         if self._infer_thread:
             self._infer_thread.join(timeout=5)
         if self._decoder:
@@ -1105,19 +1108,13 @@ class Pipeline:
         # will get its own separate loop — they must not share one.
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        self._infer_loop = loop
+        self._infer_event_loop = loop
 
         engine = None
         try:
-            # Load model in this thread's event loop (blocking call)
-            # Use run_in_executor so it doesn't block the loop if model loading
-            # takes time (e.g., first-time CUDA init)
-            future = loop.run_in_executor(
-                None, lambda: loop.run_until_complete(
-                    self.model_pool.load_model(model_id, model_path)
-                )
+            engine = loop.run_until_complete(
+                self.model_pool.load_model(model_id, model_path)
             )
-            engine = future.result()
         except Exception as e:
             logger.error(f"Failed to load model for pipeline {self.pipeline_id}: {e}")
             self._report_error(e)
@@ -1125,7 +1122,7 @@ class Pipeline:
             return
 
         # Start the inference thread
-        self._infer_thread = Thread(target=self._infer_loop, args=(engine,), daemon=True)
+        self._infer_thread = Thread(target=self._run_inference, args=(engine,), daemon=True)
         self._infer_thread.start()
 
         fps_counter = FPSCounter()
@@ -1160,7 +1157,7 @@ class Pipeline:
             elif self.config.drop_policy == "drop_newest":
                 try:
                     self._frame_queue.put_nowait(frame_data)
-                except:
+                except Full:
                     try:
                         self._frame_queue.get_nowait()
                         self._frame_queue.put_nowait(frame_data)
@@ -1168,16 +1165,16 @@ class Pipeline:
                         pass
             else:  # block
                 self._frame_queue.put(frame_data, timeout=1)
-        except:
+        except (Full, Empty):
             pass
 
     # ── Inference thread ──────────────────────────────────────────────────────
 
-    def _infer_loop(self, engine: InferenceEngine):
+    def _run_inference(self, engine: InferenceEngine):
         """Runs in inference thread. Owns its own event loop. Reads from _frame_queue."""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        self._infer_loop = loop
+        self._infer_event_loop = loop
 
         try:
             loop.run_until_complete(self._inferCoroutine(engine))
@@ -1186,7 +1183,7 @@ class Pipeline:
             self._report_error(e)
         finally:
             loop.close()
-            self._infer_loop = None
+            self._infer_event_loop = None
 
     async def _inferCoroutine(self, engine: InferenceEngine):
         """Async coroutine running inside the inference thread's event loop."""
@@ -1226,11 +1223,11 @@ class Pipeline:
             # Post to result queue (from async context — safe)
             try:
                 self._result_queue.put_nowait(result)
-            except asyncio.QueueFull:
+            except Full:
                 try:
                     self._result_queue.get_nowait()
                     self._result_queue.put_nowait(result)
-                except asyncio.QueueEmpty:
+                except Empty:
                     pass
 
     def _write_frame(self, frame: np.ndarray):
@@ -1269,17 +1266,8 @@ class Pipeline:
 
     async def get_result(self, timeout: float = 1.0) -> InferenceResult | None:
         try:
-            return await asyncio.wait_for(self._result_queue.get(), timeout)
-        except asyncio.TimeoutError:
-            return None
-
-    def get_fps(self) -> float:
-        return 0.0
-
-    async def get_result(self, timeout: float = 1.0) -> InferenceResult | None:
-        try:
-            return await asyncio.wait_for(self._result_queue.get(), timeout)
-        except asyncio.TimeoutError:
+            return self._result_queue.get(timeout=timeout)
+        except Empty:
             return None
 
     def get_fps(self) -> float:
@@ -1394,6 +1382,7 @@ class StreamManager:
         self.model_pool = model_pool
         self._pipelines: dict[str, Pipeline] = {}
         self._lock = asyncio.Lock()
+        self._main_loop: asyncio.AbstractEventLoop | None = None
 
     async def create_pipeline(self, stream_id: str, model_id: str) -> Pipeline | None:
         stream = await self.stream_repo.get_by_id(stream_id)
@@ -1412,6 +1401,8 @@ class StreamManager:
             classes=stream.config.get("classes"),
         )
 
+        self._main_loop = asyncio.get_running_loop()
+
         pipeline = Pipeline(
             pipeline_id=stream_id,
             input_url=stream.input_url,
@@ -1419,8 +1410,8 @@ class StreamManager:
             output_url=stream.output_url,
             model_pool=self.model_pool,
             config=config,
-            on_error=lambda pid, exc: asyncio.create_task(
-                self._on_pipeline_error(pid, exc)
+            on_error=lambda pid, exc: asyncio.run_coroutine_threadsafe(
+                self._on_pipeline_error(pid, exc), self._main_loop
             ),
         )
 
@@ -1476,7 +1467,7 @@ class StreamManager:
         async with self._lock:
             orphaned = []
             for stream_id, pipeline in self._pipelines.items():
-                if not pipeline._thread or not pipeline._thread.is_alive():
+                if not pipeline._decode_thread or not pipeline._decode_thread.is_alive():
                     orphaned.append(stream_id)
 
             for stream_id in orphaned:
@@ -1670,8 +1661,15 @@ class SnapshotManager:
         self.s3_bucket = config.snapshots.s3_bucket
         self.s3_region = config.snapshots.s3_region
         self.s3_prefix = config.snapshots.s3_prefix
+        self._s3_client = None
         if self.storage_type == "local":
             self.local_path.mkdir(parents=True, exist_ok=True)
+
+    def _get_s3_client(self):
+        if self._s3_client is None:
+            import boto3
+            self._s3_client = boto3.client("s3", region_name=self.s3_region)
+        return self._s3_client
 
     def save(
         self,
@@ -1697,9 +1695,7 @@ class SnapshotManager:
             return f"file://{filepath}"
 
         if self.storage_type == "s3":
-            import boto3
-
-            s3_client = boto3.client("s3", region_name=self.s3_region)
+            s3_client = self._get_s3_client()
             key = f"{self.s3_prefix.rstrip('/')}/{filename}"
             # Encode frame to JPEG bytes in memory
             import tempfile
@@ -1725,9 +1721,7 @@ class SnapshotManager:
             return
 
         if self.storage_type == "s3":
-            import boto3
-
-            s3_client = boto3.client("s3", region_name=self.s3_region)
+            s3_client = self._get_s3_client()
             paginator = s3_client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=self.s3_bucket, Prefix=self.s3_prefix):
                 for obj in page.get("Contents", []):
@@ -1810,9 +1804,11 @@ class WebhookDispatcher:
         self._queue: asyncio.Queue[WebhookPayload] = asyncio.Queue(maxsize=queue_maxsize)
         self._running = False
         self._task: asyncio.Task | None = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def start(self):
         self._running = True
+        self._session = aiohttp.ClientSession()
         self._task = asyncio.create_task(self._process_queue())
 
     async def stop(self):
@@ -1823,6 +1819,9 @@ class WebhookDispatcher:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        if self._session:
+            await self._session.close()
+            self._session = None
 
     async def enqueue(self, payload: WebhookPayload):
         try:
@@ -1852,13 +1851,12 @@ class WebhookDispatcher:
 
         for attempt in range(self.retry_max + 1):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
+                async with self._session.post(
                         self.webhook_url,
                         json=payload.__dict__,
                         headers=headers,
                         timeout=aiohttp.ClientTimeout(total=self.timeout),
-                    ) as resp:
+                        ) as resp:
                         if resp.status < 400:
                             return True
                         logger.warning(f"Webhook returned {resp.status}")
@@ -2272,7 +2270,8 @@ git commit -m "feat: add stream management API routes"
 ```python
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from pathlib import Path
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
