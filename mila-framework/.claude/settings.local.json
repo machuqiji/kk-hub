@@ -48,7 +48,12 @@
       "Bash(javap -public /tmp/net/logstash/logback/composite/loggingevent/LoggingEventJsonProviders.class)",
       "Bash(rm -rf /tmp/net)",
       "Bash(rm -rf net)",
-      "Bash(javap -public /tmp/net/logstash/logback/composite/loggingevent/LoggingEventCompositeJsonFormatter.class)"
+      "Bash(javap -public /tmp/net/logstash/logback/composite/loggingevent/LoggingEventCompositeJsonFormatter.class)",
+      "Bash(git *)",
+      "Bash(unzip -p /Users/xyk/.m2/repository/com/mybatis-flex/mybatis-flex-processor/1.11.6/mybatis-flex-processor-1.11.6.jar META-INF/services/javax.annotation.processing.Processor)",
+      "Bash(grep -r \"obsidian\" /Users/xyk/.claude/ --include=\"*.json\" -l --max-depth=2)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('mcpServers',{}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")"
     ]
   }
 }
